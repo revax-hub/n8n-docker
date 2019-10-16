@@ -1,0 +1,47 @@
+version: "3"
+
+services:
+  n8n:
+    image: n8nio/n8n:$N8N_TAG
+    container_name: "${PROJECT_NAME}_n8n"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: 'true'
+      N8N_BASIC_AUTH_USER: $N8N_USER
+      N8N_BASIC_AUTH_PASSWORD: $N8N_PASSWORD
+      N8N_PORT: $N8N_PORT
+    ports:
+      - $N8N_PORT:5678
+    labels:
+      - 'traefik.backend=${PROJECT_NAME}_n8n'
+      - 'traefik.port=5678'
+      - 'traefik.frontend.rule=Host:portainer.${PROJECT_BASE_URL}'
+    volumes:
+      - ./docker/database/.n8n:/root/.n8n # Use bind mount
+
+
+  portainer:
+    image: portainer/portainer
+    container_name: "${PROJECT_NAME}_portainer"
+    command: --no-auth -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - 'traefik.backend=${PROJECT_NAME}_portainer'
+      - 'traefik.port=9000'
+      - 'traefik.frontend.rule=Host:portainer.${PROJECT_BASE_URL}'
+
+  traefik:
+    image: traefik:v1.7.16-alpine
+    container_name: "${PROJECT_NAME}_traefik"
+    command: -c /dev/null --web --docker --logLevel=INFO
+    ports:
+      - '8080:8080' # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+#volumes:
+## Docker-sync for macOS users
+#  docker-sync:
+#    external: true
+## For Xdebug profiler
+#  files:
